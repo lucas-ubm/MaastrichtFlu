@@ -8,7 +8,7 @@ def fill_bin_num(dataframe, feature, bin_feature, bin_size, stat_measure, min_bi
     for num_bin, subset in dataframe.groupby(pd.cut(dataframe[bin_feature], np.arange(min_bin, max_bin+bin_size, bin_size), include_lowest=True)):
         if stat_measure is 'mean':
             row = [num_bin, subset[feature].mean()]
-        elif stat_measure is 'mode':
+        elif stat_measure is 'mode': 
             mode_ar = subset[feature].mode().values
             if len(mode_ar) > 0:
                 row = [num_bin, mode_ar[0]]
@@ -44,7 +44,7 @@ def cleaning(dataframe_raw):
     dataframe['Education'] = dataframe['Education'].fillna('Some College')
 
     dataframe.loc[(dataframe['Age']<=20) & (dataframe['MaritalStatus'].isna()), 'MaritalStatus'] = 'NeverMarried'
-    dataframe.at[dataframe['MaritalStatus'].isna(), 'MaritalStatus'] = 'Married'  # For now this is hardcoded
+    dataframe.at[dataframe['MaritalStatus'].isna(), 'MaritalStatus'] = fill_bin_num(dataframe, 'MaritalStatus', 'Age', 5, 'mode',20)
 
     dataframe = dataframe.drop(columns=['HHIncome'])
 
@@ -100,13 +100,12 @@ def cleaning(dataframe_raw):
 
     dataframe = dataframe.drop(columns=['Testosterone'])
 
-    # Set to 0 for the time being because I cannot find the values
-    dataframe.loc[(dataframe['Age']<10) & (dataframe['DirectChol'].isna()), 'DirectChol'] = 0
+    dataframe.loc[(dataframe['Age']<10) & (dataframe['DirectChol'].isna()), 'DirectChol'] = 0 
     dataframe = fill_bin_num(dataframe, 'DirectChol', 'Age', 5, 'mean', 10)
 
     dataframe.loc[(dataframe['Age']<10) & (dataframe['TotChol'].isna()), 'TotChol'] = 0
     dataframe = fill_bin_num(dataframe, 'TotChol', 'Age', 5, 'mean', 10)
-
+    
     dataframe = dataframe.drop(columns=['UrineVol1'])
 
     dataframe = dataframe.drop(columns=['UrineFlow1'])
@@ -131,9 +130,12 @@ def cleaning(dataframe_raw):
     dataframe.loc[(dataframe['Age']<=12) & (dataframe['DaysMentHlthBad'].isna()), 'DaysMentHlthBad'] = 0
     dataframe = fill_bin_num(dataframe, 'DaysMentHlthBad', 'Age', 5, 'mean', 10)
 
-    dataframe['nPregnancies'] = dataframe['nPregnancies'].fillna(0)
-
+    for index, row in dataframe.iterrows():
+        if np.isnan(row['nBabies']) and not np.isnan(row['nPregnancies']):
+            dataframe.at[index, 'nBabies'] = row['nPregnancies']
     dataframe['nBabies'] = dataframe['nBabies'].fillna(0)
+
+    dataframe['nPregnancies'] = dataframe['nPregnancies'].fillna(0)
 
     dataframe['Age1stBaby'] = dataframe['Age1stBaby'].fillna(0)
 
@@ -144,7 +146,7 @@ def cleaning(dataframe_raw):
     dataframe.loc[(dataframe['Age']<=15) & (dataframe['SleepHrsNight'].isna()), 'SleepHrsNight'] = 8
     dataframe['SleepHrsNight'] = dataframe['SleepHrsNight'].fillna(dataframe_raw['SleepHrsNight'].mean())
 
-    dataframe['SleepTrouble'] = dataframe['SleepTrouble'].fillna(0)
+    dataframe['SleepTrouble'] = dataframe['SleepTrouble'].fillna('No')
 
     dataframe.loc[(dataframe['Age']<=4) & (dataframe['PhysActive'].isna()), 'PhysActive'] = 'No'
     dataframe = fill_bin_num(dataframe, 'PhysActive', 'Age', 2, 'mode', 16)
@@ -164,17 +166,17 @@ def cleaning(dataframe_raw):
     dataframe = fill_bin_num(dataframe, 'Alcohol12PlusYr', 'Age', 5, 'mode', 18)
 
     dataframe.loc[(dataframe['Age']<18) & (dataframe['AlcoholDay'].isna()), 'AlcoholDay'] = 0
-    dataframe = fill_bin_num(dataframe, 'AlcoholDay', 'Age', 5, 'mode', 18)
+    dataframe = fill_bin_num(dataframe, 'AlcoholDay', 'Age', 5, 'mean', 18)
 
     dataframe.loc[(dataframe['Age']<18) & (dataframe['AlcoholYear'].isna()), 'AlcoholYear'] = 0
-    dataframe = fill_bin_num(dataframe, 'AlcoholYear', 'Age', 5, 'mode', 18)
+    dataframe = fill_bin_num(dataframe, 'AlcoholYear', 'Age', 5, 'mean', 18)
 
     dataframe.loc[(dataframe['Age']<20) & (dataframe['SmokeNow'].isna()), 'SmokeNow'] = 'No'
     dataframe = fill_bin_num(dataframe, 'SmokeNow', 'Age', 5, 'mode', 20)
 
     dataframe['Smoke100'] = dataframe['Smoke100'].fillna('No')
 
-    dataframe['Smoke100n'] = dataframe['Smoke100'].fillna('No')
+    dataframe['Smoke100n'] = dataframe['Smoke100n'].fillna('No')
 
     dataframe.loc[(dataframe['SmokeNow']=='No') & (dataframe['SmokeAge'].isna()), 'SmokeAge'] = 0
     dataframe = fill_bin_num(dataframe, 'SmokeAge', 'Age', 5, 'mean', 20)
@@ -213,7 +215,7 @@ def cleaning(dataframe_raw):
 
     dataframe = dataframe.drop(columns=['SameSex'])
 
-    dataframe = dataframe.drop(columns=['SexOrientation']) # Maybe this should not be dropped
+    dataframe = dataframe.drop(columns=['SexOrientation'])
 
     dataframe['PregnantNow'] = dataframe['PregnantNow'].fillna('No')
 
@@ -245,11 +247,10 @@ def cleaning(dataframe_raw):
 
     dataframe['PhysActive'] = np.where(dataframe['PhysActive'] == 'Yes',1,0)
 
-
     dataframe['Alcohol12PlusYr'] = np.where(dataframe['Alcohol12PlusYr'] == 'Yes',1,0)
 
     dataframe['SmokeNow'] = np.where(dataframe['SmokeNow'] == 'Yes',1,0)
-
+    
     dataframe['Smoke100'] = np.where(dataframe['Smoke100'] == 'Yes',1,0)
 
     dataframe['Smoke100n'] = np.where(dataframe['Smoke100n'] == 'Yes',1,0)
@@ -261,9 +262,6 @@ def cleaning(dataframe_raw):
     dataframe['HardDrugs'] = np.where(dataframe['HardDrugs'] == 'Yes',1,0)
 
     dataframe['SexEver'] = np.where(dataframe['SexEver'] == 'Yes',1,0)
-
-    # dataframe['Heterosexual'] = np.where(dataframe['SexOrientation'] == 'Heterosexual',1,0)
-    # dataframe = dataframe.drop(columns=['SexOrientation'])
 
     dataframe['PregnantNow'] = np.where(dataframe['PregnantNow'] == 'Yes',1,0)
 
